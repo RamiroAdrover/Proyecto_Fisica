@@ -1,0 +1,25 @@
+# Ignorar cache de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar entornos virtuales si los usás en el futuro
+env/
+venv/
+ENV/
+VENV/
+
+# Ignorar configuración de editores (por ejemplo VSCode)
+.vscode/
+
+# Ignorar archivos de log
+*.log
+
+# Ignorar carpeta salida
+salida/
+
+# Archivos CSV y PNG
+*.csv
+*.png
+
