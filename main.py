@@ -91,6 +91,7 @@ prev_y_m = None
 prev_time = None
 velocity_y_m = 0
 acceleration_y_m = 0
+offset_y_m = 1
 
 # Variable para controlar la pausa
 paused = False
@@ -125,7 +126,7 @@ while True:
             adjusted_x_px = x + w // 2
 
             # Convierte las coordenadas a metros
-            adjusted_y_m = adjusted_y_px * pixels_to_meters
+            adjusted_y_m = (adjusted_y_px * pixels_to_meters) - offset_y_m
             adjusted_x_m = adjusted_x_px * pixels_to_meters
 
             # Calcula el tiempo actual
