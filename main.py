@@ -28,6 +28,7 @@ checkboxes = {
     "acceleration": {"pos": (10, 60), "size": (20, 20), "label": "Aceleración", "state": True},
     "trajectory": {"pos": (10, 90), "size": (20, 20), "label": "Trayectoria", "state": True},
     "magnitudes": {"pos": (10, 120), "size": (20, 20), "label": "Magnitudes", "state": True},
+    "x_components": {"pos": (10, 150), "size": (20, 20), "label": "Componentes X", "state": True},
 }
 
 # Función de callback para manejar clics del mouse
@@ -126,7 +127,7 @@ while True:
             adjusted_x_px = x + w // 2
 
             # Convierte las coordenadas a metros
-            adjusted_y_m = (adjusted_y_px * pixels_to_meters) - offset_y_m
+            adjusted_y_m = (adjusted_y_px * pixels_to_meters) - offset_y_m 
             adjusted_x_m = adjusted_x_px * pixels_to_meters
 
             # Calcula el tiempo actual
@@ -156,14 +157,47 @@ while True:
 
             # Dibuja los vectores si están habilitados
             if checkboxes["velocity"]["state"]:
-                # Dibuja el vector de velocidad (flecha azul)
-                velocity_arrow_end = (adjusted_x_px, int(frame_height - ((adjusted_y_m + velocity_y_m * 0.5) / pixels_to_meters)))
-                cv2.arrowedLine(frame, (adjusted_x_px, frame_height - adjusted_y_px), velocity_arrow_end, (255, 0, 0), 2)
+                # Dibuja el vector de velocidad (flecha azul) basado en el vector calculado
+                velocity_arrow_end = (
+                    adjusted_x_px,
+                    frame_height - int((adjusted_y_m + velocity_y_m * (1 / pixels_to_meters)))
+                )
+                cv2.arrowedLine(
+                    frame,
+                    (adjusted_x_px, frame_height - adjusted_y_px),
+                    velocity_arrow_end,
+                    (255, 0, 0),
+                    2
+                )
 
             if checkboxes["acceleration"]["state"]:
-                # Dibuja el vector de aceleración (flecha roja)
-                acceleration_arrow_end = (adjusted_x_px, int(frame_height - ((adjusted_y_m + acceleration_y_m * 0.05) / pixels_to_meters)))
-                cv2.arrowedLine(frame, (adjusted_x_px, frame_height - adjusted_y_px), acceleration_arrow_end, (0, 0, 255), 2)
+                # Dibuja el vector de aceleración (flecha roja) basado en el vector calculado
+                acceleration_arrow_end = (
+                    adjusted_x_px,
+                    frame_height - int((adjusted_y_m + acceleration_y_m * (1 / pixels_to_meters)))
+                )
+                cv2.arrowedLine(
+                    frame,
+                    (adjusted_x_px, frame_height - adjusted_y_px),
+                    acceleration_arrow_end,
+                    (0, 0, 255),
+                    2
+                )
+
+            # Dibuja vectores de flechas para las componentes en el eje X
+            if checkboxes["x_components"]["state"]:
+                # Dibuja el vector de velocidad en X (flecha verde claro)
+                velocity_x_arrow_end = (int(adjusted_x_px + velocity_y_m * 0.5 / pixels_to_meters), frame_height - adjusted_y_px)
+                cv2.arrowedLine(frame, (adjusted_x_px, frame_height - adjusted_y_px), velocity_x_arrow_end, (0, 255, 255), 2)
+
+                # Dibuja el vector de aceleración en X (flecha púrpura)
+                acceleration_x_arrow_end = (int(adjusted_x_px + acceleration_y_m * 0.05 / pixels_to_meters), frame_height - adjusted_y_px)
+                cv2.arrowedLine(frame, (adjusted_x_px, frame_height - adjusted_y_px), acceleration_x_arrow_end, (255, 0, 255), 2)
+
+            # Cambiar el color de la trayectoria en X
+            if checkboxes["trajectory"]["state"]:
+                for i in range(1, len(trajectory)):
+                    cv2.line(frame, trajectory[i - 1], trajectory[i], (255, 165, 0), 2)  # Naranja para la trayectoria
 
             # Muestra las magnitudes si están habilitadas
             if checkboxes["magnitudes"]["state"]:
@@ -177,7 +211,7 @@ while True:
             # Dibuja la trayectoria si está habilitada
             if checkboxes["trajectory"]["state"]:
                 for i in range(1, len(trajectory)):
-                    cv2.line(frame, trajectory[i - 1], trajectory[i], (0, 255, 255), 2)
+                    cv2.line(frame, trajectory[i - 1], trajectory[i], (255, 165, 0), 2)  # Naranja para la trayectoria
 
             # Actualiza las variables previas
             prev_y_m = adjusted_y_m
@@ -224,28 +258,29 @@ df.to_csv("resultados_rastreo.csv", index=False)
 print("Datos guardados en 'resultados_rastreo.csv'")
 
 # Generar gráficos de posición, velocidad y aceleración
-fig, axs = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+fig, axs = plt.subplots(3, 1, figsize=(10, 16), sharex=True)
 
-# Posición Y vs frame
+# Posición X e Y vs frame
+axs[0].plot(df["nro_frame"], df["x_m"], label="Posición X (m)", color="orange")
 axs[0].plot(df["nro_frame"], df["y_m"], label="Posición Y (m)", color="blue")
-axs[0].set_ylabel("Posición Y (m)")
+axs[0].set_ylabel("Posición (m)")
 axs[0].grid(True)
 axs[0].legend()
 
-# Velocidad Y vs frame
-axs[1].plot(df["nro_frame"], df["vy_m/s"], label="Velocidad Y (m/s)", color="green")
-axs[1].set_ylabel("Velocidad Y (m/s)")
+# Velocidad X e Y vs frame
+axs[1].plot(df["nro_frame"], df["vx_m/s"], label="Velocidad X (m/s)", color="green")
+axs[1].plot(df["nro_frame"], df["vy_m/s"], label="Velocidad Y (m/s)", color="red")
+axs[1].set_ylabel("Velocidad (m/s)")
 axs[1].grid(True)
 axs[1].legend()
 
-# Aceleración Y vs frame
-axs[2].plot(df["nro_frame"], df["ay_m/s^2"], label="Aceleración Y (m/s²)", color="red")
-axs[2].set_xlabel("Número de Frame")
-axs[2].set_ylabel("Aceleración Y (m/s²)")
+# Aceleración X e Y vs frame
+axs[2].plot(df["nro_frame"], df["ax_m/s^2"], label="Aceleracion X (m/s²)", color="purple")
+axs[2].plot(df["nro_frame"], df["ay_m/s^2"], label="Aceleracion Y (m/s²)", color="brown")
+axs[2].set_ylabel("Aceleracion (m/s²)")
 axs[2].grid(True)
 axs[2].legend()
 
-# Guardar gráfico y mostrar
 plt.tight_layout()
 plt.savefig("graficos_dinamica.png")
 plt.show()
