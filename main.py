@@ -183,6 +183,16 @@ while True:
             prev_time = current_time
             prev_velocity_y_m = velocity_y_m
 
+            # Guarda los datos en la lista para exportar luego
+            data.append({
+                "nro_frame": frame_count,
+                "x_m": round(adjusted_x_m, 2),
+                "y_m": round(adjusted_y_m, 2),
+                "vy_m/s": round(velocity_y_m, 2),
+                "ay_m/s^2": round(acceleration_y_m, 2)
+            })
+
+
         frame_count += 1
 
     # Dibujar los checkboxes
@@ -204,3 +214,37 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+
+# Crear un DataFrame con los datos recolectados
+df = pd.DataFrame(data)
+
+# Guardar el DataFrame en un archivo CSV
+df.to_csv("resultados_rastreo.csv", index=False)
+print("Datos guardados en 'resultados_rastreo.csv'")
+
+# Generar gráficos de posición, velocidad y aceleración
+fig, axs = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+
+# Posición Y vs frame
+axs[0].plot(df["nro_frame"], df["y_m"], label="Posición Y (m)", color="blue")
+axs[0].set_ylabel("Posición Y (m)")
+axs[0].grid(True)
+axs[0].legend()
+
+# Velocidad Y vs frame
+axs[1].plot(df["nro_frame"], df["vy_m/s"], label="Velocidad Y (m/s)", color="green")
+axs[1].set_ylabel("Velocidad Y (m/s)")
+axs[1].grid(True)
+axs[1].legend()
+
+# Aceleración Y vs frame
+axs[2].plot(df["nro_frame"], df["ay_m/s^2"], label="Aceleración Y (m/s²)", color="red")
+axs[2].set_xlabel("Número de Frame")
+axs[2].set_ylabel("Aceleración Y (m/s²)")
+axs[2].grid(True)
+axs[2].legend()
+
+# Guardar gráfico y mostrar
+plt.tight_layout()
+plt.savefig("graficos_dinamica.png")
+plt.show()
