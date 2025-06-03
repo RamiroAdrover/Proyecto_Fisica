@@ -88,9 +88,14 @@ frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 
 # Variables para calcular velocidad y aceleración
+prev_x_m = None
 prev_y_m = None
 prev_time = None
+velocity_x_m = 0
 velocity_y_m = 0
+prev_velocity_x_m = 0
+prev_velocity_y_m = 0
+acceleration_x_m = 0
 acceleration_y_m = 0
 offset_y_m = 1
 
@@ -128,82 +133,93 @@ while True:
 
             # Convierte las coordenadas a metros
             adjusted_y_m = (adjusted_y_px * pixels_to_meters) - offset_y_m 
-            adjusted_x_m = adjusted_x_px * pixels_to_meters
-
-            # Calcula el tiempo actual
+            adjusted_x_m = adjusted_x_px * pixels_to_meters            # Calcula el tiempo actual
             current_time = time.time()
 
-            if prev_y_m is not None and prev_time is not None:
-                # Calcula la velocidad en el eje Y (m/s)
-                velocity_y_m = (adjusted_y_m - prev_y_m) / (current_time - prev_time)
+            if prev_x_m is not None and prev_y_m is not None and prev_time is not None:
+                # Calcula la velocidad en ambos ejes (m/s)
+                delta_time = current_time - prev_time
+                velocity_x_m = (adjusted_x_m - prev_x_m) / delta_time
+                velocity_y_m = (adjusted_y_m - prev_y_m) / delta_time
 
-                # Calcula la aceleración en el eje Y (m/s²)
-                acceleration_y_m = (velocity_y_m - prev_velocity_y_m) / (current_time - prev_time)
+                # Calcula la aceleración en ambos ejes (m/s²)
+                acceleration_x_m = (velocity_x_m - prev_velocity_x_m) / delta_time
+                acceleration_y_m = (velocity_y_m - prev_velocity_y_m) / delta_time
 
                 # Predice la posición futura
-                delta_t = current_time - prev_time
-                predicted_y_m = adjusted_y_m + velocity_y_m * delta_t + 0.5 * acceleration_y_m * (delta_t ** 2)
-                predicted_x_m = adjusted_x_m  # Suponemos que no hay aceleración en X
+                predicted_y_m = adjusted_y_m + velocity_y_m * delta_time + 0.5 * acceleration_y_m * (delta_time ** 2)
+                predicted_x_m = adjusted_x_m + velocity_x_m * delta_time + 0.5 * acceleration_x_m * (delta_time ** 2)
 
                 # Convierte la posición predicha a píxeles
                 predicted_y_px = int(frame_height - (predicted_y_m / pixels_to_meters))
                 predicted_x_px = int(predicted_x_m / pixels_to_meters)
 
                 # Dibuja la posición predicha en el video
-                cv2.circle(frame, (predicted_x_px, predicted_y_px), 5, (0, 0, 255), -1)  # Punto rojo para la predicción
-
-            # Dibuja el rectángulo del objeto rastreado
+                cv2.circle(frame, (predicted_x_px, predicted_y_px), 5, (0, 0, 255), -1)  # Punto rojo para la predicción            # Dibuja el rectángulo del objeto rastreado
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
+            
             # Dibuja los vectores si están habilitados
-            if checkboxes["velocity"]["state"]:
-                # Dibuja el vector de velocidad (flecha azul) basado en el vector calculado
-                velocity_arrow_end = (
-                    adjusted_x_px,
-                    frame_height - int((adjusted_y_m + velocity_y_m * (1 / pixels_to_meters)))
-                )
+            center_x = adjusted_x_px
+            center_y = frame_height - adjusted_y_px
+            
+            if checkboxes["velocity"]["state"] and prev_x_m is not None:
+                # Escala para visualización de vectores (ajustable)
+                velocity_scale = 50  # píxeles por m/s
+                
+                # Solo componente Y - flecha vertical
+                velocity_end_x = center_x  # Sin componente X
+                velocity_end_y = int(center_y - velocity_y_m * velocity_scale)  # Negativo porque Y crece hacia abajo en OpenCV
+                
+                # Dibuja el vector de velocidad (flecha azul) solo en Y
                 cv2.arrowedLine(
                     frame,
-                    (adjusted_x_px, frame_height - adjusted_y_px),
-                    velocity_arrow_end,
-                    (255, 0, 0),
-                    2
+                    (center_x, center_y),
+                    (velocity_end_x, velocity_end_y),
+                    (255, 0, 0),  # Azul
+                    2,
+                    tipLength=0.3
                 )
 
-            if checkboxes["acceleration"]["state"]:
-                # Dibuja el vector de aceleración (flecha roja) basado en el vector calculado
-                acceleration_arrow_end = (
-                    adjusted_x_px,
-                    frame_height - int((adjusted_y_m + acceleration_y_m * (1 / pixels_to_meters)))
-                )
+            if checkboxes["acceleration"]["state"] and prev_x_m is not None:
+                # Escala para visualización de aceleración (ajustable)
+                acceleration_scale = 10  # píxeles por m/s²
+                
+                # Solo componente Y - flecha vertical hacia abajo (gravedad)
+                accel_end_x = center_x  # Sin componente X
+                accel_end_y = int(center_y + acceleration_y_m * acceleration_scale)  # Siempre hacia abajo
+                
+                # Dibuja el vector de aceleración (flecha roja) siempre hacia abajo
                 cv2.arrowedLine(
                     frame,
-                    (adjusted_x_px, frame_height - adjusted_y_px),
-                    acceleration_arrow_end,
-                    (0, 0, 255),
-                    2
+                    (center_x, center_y),
+                    (accel_end_x, accel_end_y),
+                    (0, 0, 255),  # Rojo
+                    2,
+                    tipLength=0.3
                 )
 
             # Dibuja vectores de flechas para las componentes en el eje X
-            if checkboxes["x_components"]["state"]:
-                # Dibuja el vector de velocidad en X (flecha verde claro)
-                velocity_x_arrow_end = (int(adjusted_x_px + velocity_y_m * 0.5 / pixels_to_meters), frame_height - adjusted_y_px)
-                cv2.arrowedLine(frame, (adjusted_x_px, frame_height - adjusted_y_px), velocity_x_arrow_end, (0, 255, 255), 2)
+            if checkboxes["x_components"]["state"] and prev_x_m is not None:
+                # Componente X de velocidad (flecha verde claro)
+                vel_x_end = (int(center_x + velocity_x_m * 50), center_y)
+                cv2.arrowedLine(frame, (center_x, center_y), vel_x_end, (0, 255, 255), 2, tipLength=0.2)
 
-                # Dibuja el vector de aceleración en X (flecha púrpura)
-                acceleration_x_arrow_end = (int(adjusted_x_px + acceleration_y_m * 0.05 / pixels_to_meters), frame_height - adjusted_y_px)
-                cv2.arrowedLine(frame, (adjusted_x_px, frame_height - adjusted_y_px), acceleration_x_arrow_end, (255, 0, 255), 2)
+                # Componente Y de velocidad (flecha amarilla)
+                vel_y_end = (center_x, int(center_y - velocity_y_m * 50))
+                cv2.arrowedLine(frame, (center_x, center_y), vel_y_end, (0, 255, 0), 2, tipLength=0.2)
 
             # Cambiar el color de la trayectoria en X
             if checkboxes["trajectory"]["state"]:
                 for i in range(1, len(trajectory)):
-                    cv2.line(frame, trajectory[i - 1], trajectory[i], (255, 165, 0), 2)  # Naranja para la trayectoria
-
-            # Muestra las magnitudes si están habilitadas
+                    cv2.line(frame, trajectory[i - 1], trajectory[i], (255, 165, 0), 2)  # Naranja para la trayectoria            # Muestra las magnitudes si están habilitadas
             if checkboxes["magnitudes"]["state"]:
-                cv2.putText(frame, f"Y: {adjusted_y_m:.1f} m", (frame_width - 200, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                cv2.putText(frame, f"Vel: {velocity_y_m:.1f} m/s", (frame_width - 200, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-                cv2.putText(frame, f"Acel: {acceleration_y_m:.1f} m/s^2", (frame_width - 200, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                cv2.putText(frame, f"X: {adjusted_x_m:.1f} m", (frame_width - 200, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(frame, f"Y: {adjusted_y_m:.1f} m", (frame_width - 200, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                if prev_x_m is not None:
+                    cv2.putText(frame, f"Vx: {velocity_x_m:.1f} m/s", (frame_width - 200, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                    cv2.putText(frame, f"Vy: {velocity_y_m:.1f} m/s", (frame_width - 200, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+                    cv2.putText(frame, f"Ax: {acceleration_x_m:.1f} m/s^2", (frame_width - 200, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    cv2.putText(frame, f"Ay: {acceleration_y_m:.1f} m/s^2", (frame_width - 200, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
             # Agrega la posición actual a la trayectoria
             trajectory.append((adjusted_x_px, frame_height - adjusted_y_px))
@@ -211,19 +227,22 @@ while True:
             # Dibuja la trayectoria si está habilitada
             if checkboxes["trajectory"]["state"]:
                 for i in range(1, len(trajectory)):
-                    cv2.line(frame, trajectory[i - 1], trajectory[i], (255, 165, 0), 2)  # Naranja para la trayectoria
-
-            # Actualiza las variables previas
+                    cv2.line(frame, trajectory[i - 1], trajectory[i], (255, 165, 0), 2)  # Naranja para la trayectoria            # Actualiza las variables previas
+            prev_x_m = adjusted_x_m
             prev_y_m = adjusted_y_m
             prev_time = current_time
-            prev_velocity_y_m = velocity_y_m
+            if prev_x_m is not None:
+                prev_velocity_x_m = velocity_x_m
+                prev_velocity_y_m = velocity_y_m
 
             # Guarda los datos en la lista para exportar luego
             data.append({
                 "nro_frame": frame_count,
                 "x_m": round(adjusted_x_m, 2),
                 "y_m": round(adjusted_y_m, 2),
+                "vx_m/s": round(velocity_x_m, 2),
                 "vy_m/s": round(velocity_y_m, 2),
+                "ax_m/s^2": round(acceleration_x_m, 2),
                 "ay_m/s^2": round(acceleration_y_m, 2)
             })
 
