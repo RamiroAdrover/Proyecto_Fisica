@@ -3,6 +3,89 @@ import numpy as np
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+<<<<<<< Updated upstream
+=======
+from scipy.signal import savgol_filter
+from scipy.optimize import curve_fit
+import plotly.express as px
+import plotly.graph_objects as go
+
+# Importar threading para agregar cronometro al video
+import threading
+
+# Funciones de análisis
+def smooth_data(data, window_length=7, polyorder=2):
+    """Suaviza los datos usando filtro Savitzky-Golay"""
+    if len(data) < window_length:
+        return data
+    return savgol_filter(data, window_length, polyorder)
+
+def calculate_derivatives_with_spacing(df, spacing=3):
+    """Calcula velocidad y aceleración usando diferencias con espaciado"""
+    # Crear copia del dataframe
+    df_smooth = df.copy()
+    
+    # Suavizar posición
+    df_smooth['x_m_smooth'] = smooth_data(df['x_m'].values)
+    df_smooth['y_m_smooth'] = smooth_data(df['y_m'].values)
+    
+    # Calcular velocidad con espaciado
+    df_smooth['vx_calculated'] = df_smooth['x_m_smooth'].diff(spacing) / (spacing / 60)  # Asumiendo 60 FPS
+    df_smooth['vy_calculated'] = df_smooth['y_m_smooth'].diff(spacing) / (spacing / 60)
+    
+    # Suavizar velocidad
+    df_smooth['vx_smooth'] = smooth_data(df_smooth['vx_calculated'].fillna(0).values)
+    df_smooth['vy_smooth'] = smooth_data(df_smooth['vy_calculated'].fillna(0).values)
+    
+    # Calcular aceleración con espaciado
+    df_smooth['ax_calculated'] = df_smooth['vx_smooth'].diff(spacing) / (spacing / 60)
+    df_smooth['ay_calculated'] = df_smooth['vy_smooth'].diff(spacing) / (spacing / 60)
+    
+    return df_smooth
+
+def find_critical_time(df):
+    """Encuentra el tiempo crítico donde la velocidad en Y es máxima"""
+    if 'vy_smooth' in df.columns:
+        max_idx = df['vy_smooth'].idxmax()
+        return df.loc[max_idx, 'nro_frame'], max_idx
+    return None, None
+
+def linear_function(x, a, b):
+    """Función lineal para ajuste: y = ax + b"""
+    return a * x + b
+
+def analyze_free_fall(df, critical_frame):
+    """Analiza la caída libre después del punto crítico"""
+    if critical_frame is None:
+        return None, None
+    
+    # Datos después del punto crítico
+    free_fall_data = df[df['nro_frame'] >= critical_frame].copy()
+    
+    if len(free_fall_data) < 5:
+        return None, None
+    
+    # Ajustar línea recta a la velocidad en Y durante caída libre
+    x_data = free_fall_data['nro_frame'].values
+    y_data = free_fall_data['vy_smooth'].values
+    
+    try:
+        popt, pcov = curve_fit(linear_function, x_data, y_data)
+        gravity_estimate = abs(popt[0]) * 60  # Convertir a m/s² considerando FPS
+        return popt, gravity_estimate
+    except:
+        return None, None
+
+def predict_trajectory(x0, y0, vx0, vy0, t_max=2.0, dt=0.01, g=9.81):
+    """Predice la trayectoria usando ecuaciones de movimiento projectil"""
+    t = np.arange(0, t_max, dt)
+    x_pred = x0 + vx0 * t
+    y_pred = y0 + vy0 * t - 0.5 * g * t**2
+    
+    # Solo valores positivos de y
+    valid_idx = y_pred >= 0
+    return x_pred[valid_idx], y_pred[valid_idx], t[valid_idx]
+>>>>>>> Stashed changes
 
 # Diámetro de la pelota en metros
 ball_diameter_m = 0.24
@@ -24,10 +107,20 @@ show_magnitudes = True
 
 # Dimensiones de los checkboxes
 checkboxes = {
+<<<<<<< Updated upstream
     "velocity": {"pos": (10, 30), "size": (20, 20), "label": "Velocidad", "state": True},
     "acceleration": {"pos": (10, 60), "size": (20, 20), "label": "Aceleración", "state": True},
     "trajectory": {"pos": (10, 90), "size": (20, 20), "label": "Trayectoria", "state": True},
     "magnitudes": {"pos": (10, 120), "size": (20, 20), "label": "Magnitudes", "state": True},
+=======
+    "velocity": {"pos": (10, 60), "size": (20, 20), "label": "Velocidad Basica", "state": False},
+    "acceleration": {"pos": (10, 90), "size": (20, 20), "label": "Aceleracion Basica", "state": False},
+    "magnitudes": {"pos": (10, 120), "size": (20, 20), "label": "Magnitudes", "state": True},
+    "x_components": {"pos": (10, 150), "size": (20, 20), "label": "Componentes X", "state": False},
+    "prediction": {"pos": (10, 180), "size": (20, 20), "label": "Predicción", "state": False},
+    "smooth_vectors": {"pos": (10, 210), "size": (20, 20), "label": "Vectores Suavizados", "state": True},
+    "y_components": {"pos": (10, 240), "size": (20, 20), "label": "Solo Componentes Y", "state": True},
+>>>>>>> Stashed changes
 }
 
 # Función de callback para manejar clics del mouse
@@ -202,6 +295,11 @@ while True:
         color = (0, 255, 0) if checkbox["state"] else (0, 0, 255)
         cv2.rectangle(frame, (cx, cy), (cx + cw, cy + ch), color, -1)
         cv2.putText(frame, checkbox["label"], (cx + cw + 5, cy + ch - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+    # Cronómetro en segundos
+    if not paused:
+        cv2.putText(frame, f"Tiempo: {current_time:.2f} s", (frame_width - 200, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
 
     cv2.imshow("Rastreo CSRT", frame)
 
