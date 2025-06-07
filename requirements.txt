@@ -2,3 +2,6 @@ numpy
 opencv-contrib-python
 pandas
 matplotlib
+scipy
+plotly
+jupyter
