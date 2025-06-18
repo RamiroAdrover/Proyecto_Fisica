@@ -467,5 +467,5 @@ Los resultados obtenidos confirman la validez de las leyes de Newton y las ecuac
 
 **Fecha de entrega:** 
 **Curso:** Física I  
-**Profesor:** Gasaneo, Gustavo
+**Profesor:** Gasaneo Gustavo
 **Universidad:** UNS

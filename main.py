@@ -104,10 +104,9 @@ checkboxes = {
     "velocity": {"pos": (10, 30), "size": (20, 20), "label": "Velocidad Basica", "state": False},
     "acceleration": {"pos": (10, 60), "size": (20, 20), "label": "Aceleracion Basica", "state": False},
     "magnitudes": {"pos": (10, 90), "size": (20, 20), "label": "Magnitudes", "state": True},
-    "x_components": {"pos": (10, 120), "size": (20, 20), "label": "Componentes X", "state": False},
-    "prediction": {"pos": (10, 150), "size": (20, 20), "label": "Predicción", "state": False},
-    "smooth_vectors": {"pos": (10, 180), "size": (20, 20), "label": "Vectores Suavizados", "state": True},
-    "y_components": {"pos": (10, 210), "size": (20, 20), "label": "Solo Componentes Y", "state": True},
+    "prediction": {"pos": (10, 120), "size": (20, 20), "label": "Prediccion", "state": True},
+    "smooth_vectors": {"pos": (10, 150), "size": (20, 20), "label": "Vectores Suavizados", "state": True},
+    "y_components": {"pos": (10, 180), "size": (20, 20), "label": "Solo Componentes Y", "state": True},
 }
 
 # Función de callback para manejar clics del mouse
@@ -120,24 +119,14 @@ def mouse_callback(event, x, y, flags, param):
             if cx <= x <= cx + cw and cy <= y <= cy + ch:
                 checkbox["state"] = not checkbox["state"]
 
-# Función de callback para dibujar el rectángulo
-def draw_rectangle(event, x, y, flags, param):
-    global ix, iy, drawing, bbox
+# Configuración hardcodeada del objeto a rastrear
+def draw_circle(event, x, y, flags, param):
+    # ya no se usa
+    pass
 
-    if event == cv2.EVENT_LBUTTONDOWN:
-        drawing = True
-        ix, iy = x, y
-
-    elif event == cv2.EVENT_MOUSEMOVE:
-        if drawing:
-            frame_copy = frame.copy()
-            cv2.rectangle(frame_copy, (ix, iy), (x, y), (0, 255, 0), 2)
-            cv2.imshow("Selecciona el objeto a rastrear", frame_copy)
-
-    elif event == cv2.EVENT_LBUTTONUP:
-        drawing = False
-        bbox = (ix, iy, x - ix, y - iy)
-        cv2.destroyWindow("Selecciona el objeto a rastrear")
+# Valores hardcodeados
+bbox = (297 - 25, 620 - 25, 50, 50)  # (x, y, w, h)
+pixels_to_meters = 0.004800  # m/px
 
 # Inicializa la captura de video
 cap = cv2.VideoCapture("video/video.mp4")
@@ -147,7 +136,7 @@ ret, frame = cap.read()
 
 # Ventana para seleccionar el objeto
 cv2.namedWindow("Selecciona el objeto a rastrear")
-cv2.setMouseCallback("Selecciona el objeto a rastrear", draw_rectangle)
+cv2.setMouseCallback("Selecciona el objeto a rastrear", draw_circle)
 
 while True:
     cv2.imshow("Selecciona el objeto a rastrear", frame)
@@ -347,13 +336,7 @@ while True:
                     tipLength=0.3
                 )
 
-            # Dibuja vectores de flechas para las componentes en el eje X
-            if checkboxes["x_components"]["state"] and prev_x_m is not None:
-                # Componente X de velocidad (flecha verde claro)
-                vel_x_end = (int(center_x + velocity_x_m * 50), center_y)
-                cv2.arrowedLine(frame, (center_x, center_y), vel_x_end, (0, 255, 255), 2, tipLength=0.2)                # Componente Y de velocidad (flecha amarilla)
-                vel_y_end = (center_x, int(center_y - velocity_y_m * 50))
-                cv2.arrowedLine(frame, (center_x, center_y), vel_y_end, (0, 255, 0), 2, tipLength=0.2)            # Dibuja vectores suavizados si están habilitados
+           
             if checkboxes["smooth_vectors"]["state"] and len(data) > 7:
                 velocity_scale_smooth = 50
                 acceleration_scale_smooth = 10
