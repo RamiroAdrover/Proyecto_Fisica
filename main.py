@@ -591,32 +591,6 @@ df = pd.DataFrame(data)
 fps = 60  # o también podés usar cap.get(cv2.CAP_PROP_FPS)
 df["tiempo_s"] = df["nro_frame"] / fps
 
-# =============================
-# CÁLCULO DE ENERGÍAS
-# =============================
-
-ball_mass = 0.486  # kg (ya lo usás antes)
-g = 9.81  # m/s²
-
-# Asegurarse de que existen columnas necesarias
-if "vx_m/s" in df.columns and "vy_m/s" in df.columns and "y_m" in df.columns:
-    # Calcular velocidad total
-    df["v_total"] = np.sqrt(df["vx_m/s"]**2 + df["vy_m/s"]**2)
-
-    # Energía cinética
-    df["E_cinetica"] = 0.5 * ball_mass * df["v_total"]**2
-
-    # Energía potencial (altura respecto al suelo)
-    df["E_potencial"] = ball_mass * g * (df["y_m"] + 1)  # +1 por el offset_y_m
-
-    # Energía mecánica total
-    df["E_mecanica"] = df["E_cinetica"] + df["E_potencial"]
-
-    # Suavizar las curvas de energía
-    df["E_cinetica_suave"] = smooth_data(df["E_cinetica"].values)
-    df["E_potencial_suave"] = smooth_data(df["E_potencial"].values)
-    df["E_mecanica_suave"] = smooth_data(df["E_mecanica"].values)
-
 print("="*50)
 print("ANÁLISIS MEJORADO")
 print("="*50)
@@ -667,36 +641,6 @@ else:
 
 # PASO 4: Gráficos mejorados con datos suavizados usando Plotly
 print("\n4. Generando gráficos interactivos completos con ambas fases...")
-
-# Crear figura de energías
-energia_fig = go.Figure()
-
-energia_fig.add_trace(go.Scatter(
-    x=df["tiempo_s"], y=df["E_cinetica_suave"],
-    mode='lines', name="Energía Cinética", line=dict(color="red", width=3)
-))
-
-energia_fig.add_trace(go.Scatter(
-    x=df["tiempo_s"], y=df["E_potencial_suave"],
-    mode='lines', name="Energía Potencial", line=dict(color="blue", width=3)
-))
-
-energia_fig.add_trace(go.Scatter(
-    x=df["tiempo_s"], y=df["E_mecanica_suave"],
-    mode='lines', name="Energía Mecánica Total", line=dict(color="green", width=3, dash='dash')
-))
-
-energia_fig.update_layout(
-    title="Energías durante el movimiento",
-    xaxis_title="Tiempo (s)",
-    yaxis_title="Energía (J)",
-    legend=dict(x=0.01, y=0.99, bgcolor="white", bordercolor="black"),
-    height=500,
-    width=900
-)
-
-energia_fig.write_html("grafico_energias.html")
-print("   ✅ Gráfico de energías guardado como 'grafico_energias.html'")
 
 # Crear subplots con Plotly - Mejorado con más espacio y mejor diseño
 fig = make_subplots(
@@ -1018,6 +962,57 @@ else:
             showarrow=False, font=dict(size=14, color='orange'),
             bgcolor="rgba(255,255,255,0.8)", bordercolor="orange", borderwidth=2
         )
+
+ball_mass = 0.486  # kg (ya lo usás antes)
+
+# (1,4) Resumen de Energias
+if "vx_m/s" in df.columns and "vy_m/s" in df.columns and "y_m" in df.columns:
+    # Calcular velocidad total
+    df["v_total"] = np.sqrt(df["vx_m/s"]**2 + df["vy_m/s"]**2)
+
+    # Energía cinética
+    df["E_cinetica"] = 0.5 * ball_mass * df["v_total"]**2
+
+    # Energía potencial (altura respecto al suelo)
+    df["E_potencial"] = ball_mass * gravity_estimate * (df["y_m"] + 1)  # +1 por el offset_y_m
+
+    # Energía mecánica total
+    df["E_mecanica"] = df["E_cinetica"] + df["E_potencial"]
+
+    # Suavizar las curvas de energía
+    df["E_cinetica_suave"] = smooth_data(df["E_cinetica"].values)
+    df["E_potencial_suave"] = smooth_data(df["E_potencial"].values)
+    df["E_mecanica_suave"] = smooth_data(df["E_mecanica"].values)
+
+    # Crear figura de energías
+    energia_fig = go.Figure()
+
+    energia_fig.add_trace(go.Scatter(
+        x=df["tiempo_s"], y=df["E_cinetica_suave"],
+        mode='lines', name="Energía Cinética", line=dict(color="red", width=3)
+    ))
+
+    energia_fig.add_trace(go.Scatter(
+        x=df["tiempo_s"], y=df["E_potencial_suave"],
+        mode='lines', name="Energía Potencial", line=dict(color="blue", width=3)
+    ))
+
+    energia_fig.add_trace(go.Scatter(
+        x=df["tiempo_s"], y=df["E_mecanica_suave"],
+        mode='lines', name="Energía Mecánica Total", line=dict(color="green", width=3, dash='dash')
+    ))
+
+    energia_fig.update_layout(
+        title="Energías durante el movimiento",
+        xaxis_title="Tiempo (s)",
+        yaxis_title="Energía (J)",
+        legend=dict(x=0.01, y=0.99, bgcolor="white", bordercolor="black"),
+        height=500,
+        width=900
+    )
+
+    energia_fig.write_html("grafico_energias.html")
+    print("   ✅ Gráfico de energías guardado como 'grafico_energias.html'")
 
 # Actualizar layout - Mejorado con mayor tamaño y mejor diseño
 fig.update_layout(
