@@ -609,6 +609,11 @@ if "vx_m/s" in df.columns and "vy_m/s" in df.columns and "y_m" in df.columns:
     # Energía mecánica total
     df["E_mecanica"] = df["E_cinetica"] + df["E_potencial"]
 
+    # Suavizar las curvas de energía
+    df["E_cinetica_suave"] = smooth_data(df["E_cinetica"].values)
+    df["E_potencial_suave"] = smooth_data(df["E_potencial"].values)
+    df["E_mecanica_suave"] = smooth_data(df["E_mecanica"].values)
+
 print("="*50)
 print("ANÁLISIS MEJORADO")
 print("="*50)
@@ -664,17 +669,17 @@ print("\n4. Generando gráficos interactivos completos con ambas fases...")
 energia_fig = go.Figure()
 
 energia_fig.add_trace(go.Scatter(
-    x=df["nro_frame"], y=df["E_cinetica"],
+    x=df["nro_frame"], y=df["E_cinetica_suave"],
     mode='lines', name="Energía Cinética", line=dict(color="red", width=3)
 ))
 
 energia_fig.add_trace(go.Scatter(
-    x=df["nro_frame"], y=df["E_potencial"],
+    x=df["nro_frame"], y=df["E_potencial_suave"],
     mode='lines', name="Energía Potencial", line=dict(color="blue", width=3)
 ))
 
 energia_fig.add_trace(go.Scatter(
-    x=df["nro_frame"], y=df["E_mecanica"],
+    x=df["nro_frame"], y=df["E_mecanica_suave"],
     mode='lines', name="Energía Mecánica Total", line=dict(color="green", width=3, dash='dash')
 ))
 
