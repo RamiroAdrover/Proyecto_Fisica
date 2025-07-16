@@ -588,6 +588,9 @@ cv2.destroyAllWindows()
 # Crear un DataFrame con los datos recolectados
 df = pd.DataFrame(data)
 
+fps = 60  # o también podés usar cap.get(cv2.CAP_PROP_FPS)
+df["tiempo_s"] = df["nro_frame"] / fps
+
 # =============================
 # CÁLCULO DE ENERGÍAS
 # =============================
@@ -669,23 +672,23 @@ print("\n4. Generando gráficos interactivos completos con ambas fases...")
 energia_fig = go.Figure()
 
 energia_fig.add_trace(go.Scatter(
-    x=df["nro_frame"], y=df["E_cinetica_suave"],
+    x=df["tiempo_s"], y=df["E_cinetica_suave"],
     mode='lines', name="Energía Cinética", line=dict(color="red", width=3)
 ))
 
 energia_fig.add_trace(go.Scatter(
-    x=df["nro_frame"], y=df["E_potencial_suave"],
+    x=df["tiempo_s"], y=df["E_potencial_suave"],
     mode='lines', name="Energía Potencial", line=dict(color="blue", width=3)
 ))
 
 energia_fig.add_trace(go.Scatter(
-    x=df["nro_frame"], y=df["E_mecanica_suave"],
+    x=df["tiempo_s"], y=df["E_mecanica_suave"],
     mode='lines', name="Energía Mecánica Total", line=dict(color="green", width=3, dash='dash')
 ))
 
 energia_fig.update_layout(
     title="Energías durante el movimiento",
-    xaxis_title="Frame",
+    xaxis_title="Tiempo (s)",
     yaxis_title="Energía (J)",
     legend=dict(x=0.01, y=0.99, bgcolor="white", bordercolor="black"),
     height=500,
