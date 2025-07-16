@@ -49,7 +49,7 @@ def detect_initial_impulse_phase(df, threshold_acceleration=50):
     
     return contact_start, contact_end
 
-def analyze_impulse_phase(df, contact_start, contact_end, ball_mass=0.486):
+def analyze_impulse_phase(df, contact_start, contact_end, ball_mass=0.458):
     #Analiza la fase de impulso inicial
     
     # Datos durante el contacto
@@ -61,7 +61,7 @@ def analyze_impulse_phase(df, contact_start, contact_end, ball_mass=0.486):
     # Calcular parámetros del impulso
     fps = 60
     contact_time = len(impulse_data) / fps  # Tiempo de contacto en segundos
-    
+
     # Velocidad inicial y final durante el contacto
     initial_velocity = 0  # Asumimos que la pelota parte del reposo
     final_velocity_x = impulse_data['vx_m/s'].iloc[-1]
@@ -84,8 +84,9 @@ def analyze_impulse_phase(df, contact_start, contact_end, ball_mass=0.486):
     impulse_magnitude = ball_mass * final_velocity_magnitude
     
     # Energía cinética inicial impartida
-    kinetic_energy_initial = 0.5 * ball_mass * final_velocity_magnitude**2
-    
+    kinetic_energy_initial = 0.5 * ball_mass * (final_velocity_magnitude**2)
+    #kinetic_energy_initial = 0
+
     return {
         'contact_start_frame': contact_start,
         'contact_end_frame': contact_end,
@@ -319,7 +320,7 @@ while True:
             milliseconds = int((current_time * 1000) % 1000)
             time_str = f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
-            cv2.putText(frame, f"Tiempo: {time_str}", (10, frame_height - 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+            cv2.putText(frame, f"Tiempo: {time_str}", (10, frame_height - 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
             if prev_x_m is not None and prev_y_m is not None and prev_time is not None:
                 # Calcula la velocidad en ambos ejes (m/s) - método básico
@@ -587,6 +588,27 @@ cv2.destroyAllWindows()
 # Crear un DataFrame con los datos recolectados
 df = pd.DataFrame(data)
 
+# =============================
+# CÁLCULO DE ENERGÍAS
+# =============================
+
+ball_mass = 0.486  # kg (ya lo usás antes)
+g = 9.81  # m/s²
+
+# Asegurarse de que existen columnas necesarias
+if "vx_m/s" in df.columns and "vy_m/s" in df.columns and "y_m" in df.columns:
+    # Calcular velocidad total
+    df["v_total"] = np.sqrt(df["vx_m/s"]**2 + df["vy_m/s"]**2)
+
+    # Energía cinética
+    df["E_cinetica"] = 0.5 * ball_mass * df["v_total"]**2
+
+    # Energía potencial (altura respecto al suelo)
+    df["E_potencial"] = ball_mass * g * (df["y_m"] + 1)  # +1 por el offset_y_m
+
+    # Energía mecánica total
+    df["E_mecanica"] = df["E_cinetica"] + df["E_potencial"]
+
 print("="*50)
 print("ANÁLISIS MEJORADO")
 print("="*50)
@@ -637,6 +659,36 @@ else:
 
 # PASO 4: Gráficos mejorados con datos suavizados usando Plotly
 print("\n4. Generando gráficos interactivos completos con ambas fases...")
+
+# Crear figura de energías
+energia_fig = go.Figure()
+
+energia_fig.add_trace(go.Scatter(
+    x=df["nro_frame"], y=df["E_cinetica"],
+    mode='lines', name="Energía Cinética", line=dict(color="red", width=3)
+))
+
+energia_fig.add_trace(go.Scatter(
+    x=df["nro_frame"], y=df["E_potencial"],
+    mode='lines', name="Energía Potencial", line=dict(color="blue", width=3)
+))
+
+energia_fig.add_trace(go.Scatter(
+    x=df["nro_frame"], y=df["E_mecanica"],
+    mode='lines', name="Energía Mecánica Total", line=dict(color="green", width=3, dash='dash')
+))
+
+energia_fig.update_layout(
+    title="Energías durante el movimiento",
+    xaxis_title="Frame",
+    yaxis_title="Energía (J)",
+    legend=dict(x=0.01, y=0.99, bgcolor="white", bordercolor="black"),
+    height=500,
+    width=900
+)
+
+energia_fig.write_html("grafico_energias.html")
+print("   ✅ Gráfico de energías guardado como 'grafico_energias.html'")
 
 # Crear subplots con Plotly - Mejorado con más espacio y mejor diseño
 fig = make_subplots(
@@ -1090,9 +1142,3 @@ if impulse_analysis is not None and gravity_estimate is not None:
 
 print("="*50)
 
-# VALIDACIÓN CRUZADA: Altura máxima vs velocidad inicial
-print("\n📐 VALIDACIÓN CRUZADA CON ALTURA MÁXIMA")
-h_max = df["y_m"].max()
-v0_from_h = np.sqrt(2 * 9.81 * h_max)
-print(f"   • Altura máxima medida: {h_max:.2f} m")
-print(f"   • V0 estimada a partir de h_max: {v0_from_h:.2f} m/s")
