@@ -313,6 +313,14 @@ while True:
             # Calcula el tiempo actual
             current_time = 1 / cap.get(cv2.CAP_PROP_FPS) * frame_count
 
+            # Mostrar cronómetro en el video
+            minutes = int(current_time // 60)
+            seconds = int(current_time % 60)
+            milliseconds = int((current_time * 1000) % 1000)
+            time_str = f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
+
+            cv2.putText(frame, f"Tiempo: {time_str}", (10, frame_height - 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+
             if prev_x_m is not None and prev_y_m is not None and prev_time is not None:
                 # Calcula la velocidad en ambos ejes (m/s) - método básico
                 delta_time = current_time - prev_time
@@ -528,11 +536,11 @@ while True:
                     
                     # Información sobre detección de velocidad inicial
                     if initial_velocity_detected:
-                        cv2.putText(frame, f"V0 detectada!", (10, frame_height - 50), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                        cv2.putText(frame, f"V0 detectada!", (10, frame_height - 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                         if checkboxes["y_components"]["state"]:
-                            cv2.putText(frame, f"V0y: {initial_vy:.1f} m/s", (10, frame_height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                            cv2.putText(frame, f"V0y: {initial_vy:.1f} m/s", (10, frame_height - 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                         else:
-                            cv2.putText(frame, f"V0x: {initial_vx:.1f}, V0y: {initial_vy:.1f}", (10, frame_height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)           
+                            cv2.putText(frame, f"V0x: {initial_vx:.1f}, V0y: {initial_vy:.1f}", (10, frame_height - 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)           
 
            #Actualiza las variables previas
             prev_x_m = adjusted_x_m
@@ -985,8 +993,7 @@ axis_config = dict(
     linewidth=2,
     linecolor='black',
     mirror=True,
-    tickfont=dict(size=11),
-    titlefont=dict(size=12, color='black')
+    tickfont=dict(size=11)
 )
 
 # Aplicar configuración a todos los ejes X
@@ -1082,3 +1089,10 @@ if impulse_analysis is not None and gravity_estimate is not None:
     print(f"   • Duración impulso vs vuelo libre: {impulse_analysis['contact_time_s']:.3f}s vs {len(df)/60:.2f}s")
 
 print("="*50)
+
+# VALIDACIÓN CRUZADA: Altura máxima vs velocidad inicial
+print("\n📐 VALIDACIÓN CRUZADA CON ALTURA MÁXIMA")
+h_max = df["y_m"].max()
+v0_from_h = np.sqrt(2 * 9.81 * h_max)
+print(f"   • Altura máxima medida: {h_max:.2f} m")
+print(f"   • V0 estimada a partir de h_max: {v0_from_h:.2f} m/s")
